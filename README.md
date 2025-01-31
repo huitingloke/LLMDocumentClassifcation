@@ -16,8 +16,8 @@ KIV
     * You may choose to start it in the debug server by adding the `--debug` flag
     * If this does not work, use `python3 main.py` while `cd` into the home directory
 
-## Current Schema
+## Current (Proposed) Schema
 
-* `doc_type`: `str` - Type of document e.g. [ZY to categorize]
+* `doc_type`: `str` - Type of documents -- Risk, Compliance, Contract, Regulation, Onboarding, Client engagement
 * `doc_id`: `str` -- UUID4 generation of unique document ID
 * `date_uploaded`: `datetime` - Date the document was uploaded
