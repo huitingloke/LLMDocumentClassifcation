@@ -99,7 +99,7 @@ def delete_collection():
         return jsonify({"error": "Incorrect password"}), 400
     client.delete_collection(name="document_storage")
 
-    return jsonify({"message": "Collection deleted successfully"}), 200
+    
 
 
 if __name__ == "__main__":
