@@ -1,0 +1,20 @@
+{
+    "content": sharepoint link,
+    "raw_text": "raw_text",
+    "id": uuid4,
+    "level": "internal" OR "external",
+    "type": 
+        IF "internal"
+            "Constitution" OR
+            "Contracts" OR
+            "T&Cs" OR
+            "Privacy Policy" OR
+            "Own Financial Data & Reports"
+        IF "external"
+            "Regulation" OR
+            "Notices" OR
+            "News" OR
+            "Financial Data/Reports" OR
+            "Client Info (e.g., for onboarding)"
+    "date": date
+}
