@@ -1,3 +1,5 @@
 env
 .env
 chromadb_persistent_storage
+
+__pycache__
