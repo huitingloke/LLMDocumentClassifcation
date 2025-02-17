@@ -12,12 +12,12 @@ KIV
     * Mac: `source env/bin/activate`
     * Windows: `env\Scripts\activate`
 * Install the requirements with the command `pip install -r requirements.txt`
-* Run the Flask application with `flask --app main run`
-    * You may choose to start it in the debug server by adding the `--debug` flag
-    * If this does not work, use `python3 main.py` while `cd` into the home directory
+* Create a folder called `chromadb_persistent_storage` and another one called `document_parsing` 
 
-## Current (Proposed) Schema
+> [!IMPORTANT]  
+> Do not nest the folders within each other.
 
-* `doc_type`: `str` - Type of documents -- Risk, Compliance, Contract, Regulation, Onboarding, Client engagement
-* `doc_id`: `str` -- UUID4 generation of unique document ID
-* `date_uploaded`: `datetime` - Date the document was uploaded
+* Run the application with the command `python gradio_demo.py`
+
+> [!NOTE]  
+> The assistance of ChatGPT and Cody were used to aid the programming. 

@@ -3,6 +3,9 @@ from pypdf import PdfReader
 from gpt4all import GPT4All
 import chromadb
 import uuid
+from pypdf import PdfReader
+import sys # To view print messages from the same console
+import datetime
 
 client = chromadb.PersistentClient(path="./chromadb_persistent_storage/")
 collection = client.get_or_create_collection(
