@@ -12,6 +12,18 @@ import json
 import time
 
 length_of_text = 6000
+# Category Tag choices
+choices = [
+    "Regulation",
+    "Notices, News",
+    "Financial Data/Reports",
+    "Client Info",
+    "Constitution",
+    "Contracts",
+    "T&Cs",
+    "Privacy Policy",
+    "Own Financial Data & Reports",
+]
 
 client = chromadb.PersistentClient(path="./chromadb_persistent_storage/")
 
@@ -21,6 +33,28 @@ collection = client.get_or_create_collection(
     name="document_storage", 
 )
 
+def search_by_tag_and_query(query, category_tag):
+    results = collection.query(
+        query_texts=[query],
+        n_results=10000000000000000000,
+        where={"level2": category_tag},
+    )
+    return results
+
+"""def retrieve_search(query, num_results):
+
+    print(f"Retrieving search results...: QUERY: {query}; NUM_RESULTS: {num_results}")
+    results = ""
+    num_results = int(num_results)
+    collection_retrieval = collection.query(
+        query_texts=[query],
+        n_results=num_results,
+    )
+
+    if collection_retrieval:
+        for item in collection_retrieval:
+            print(item)
+    return collection_retrieval if collection_retrieval else "No results found."""
 
 def extract_text(file):
 
@@ -79,7 +113,7 @@ def generate_response(document_text, chosen_model):
     If the document falls under internal, further classify it into:
     Level 2 Categories (Internal): 
     - Constitution
-    - Contracts (with employees and external clients)
+    - Contracts
     - T&Cs
     - Privacy Policy
     - Own Financial Data & Reports
@@ -89,7 +123,7 @@ def generate_response(document_text, chosen_model):
     - Regulation
     - Notices, News
     - Financial Data/Reports
-    - Client Info (for onboarding etc.)
+    - Client Info
 
     Only return the classification in the following string format:
     ```json
@@ -159,22 +193,6 @@ def process_file(file_uploader, notes="", chosen_model="deepseek-r1:7b"):
         return f"File '{file_uploader.name}' uploaded successfully with these comments: {notes}"
     
     return "No file uploaded."
-
-
-def retrieve_search(query, num_results):
-
-    print(f"Retrieving search results...: QUERY: {query}; NUM_RESULTS: {num_results}")
-    results = ""
-    num_results = int(num_results)
-    collection_retrieval = collection.query(
-        query_texts=[query],
-        n_results=num_results,
-    )
-
-    if collection_retrieval:
-        for item in collection_retrieval:
-            print(item)
-    return collection_retrieval if collection_retrieval else "No results found."
 
 with gr.Blocks(css="""
     @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css');
@@ -307,12 +325,11 @@ with gr.Blocks(css="""
 
             gr.Markdown("---")
             gr.Markdown("### Search")
-            search_input = gr.Textbox(label="Search", placeholder="Enter your search query")
-            num_results = gr.Slider(minimum=1, maximum=100, value=10, step=1, label="Number of Results")
+            query = gr.Textbox(label="Search", placeholder="Enter your search query")
+            category_tag = gr.Dropdown(choices=choices, label="Category Filter", value=choices[0])
             search_button = gr.Button("Search")
             search_documents_output = gr.TextArea(label="Search Results", interactive=False)
-
-            search_button.click(retrieve_search, inputs=[search_input, num_results], outputs=search_documents_output)
+            search_button.click(search_by_tag_and_query, inputs=[query, category_tag], outputs=search_documents_output)
             upload_button.click(process_file, inputs=[file_uploader, notes, chosen_model], outputs=output_text)
 
     # Log out button container at the bottom-left of the page
