@@ -1,4 +1,5 @@
 import gradio as gr
+import os
 from pypdf import PdfReader
 import chromadb
 import uuid
@@ -33,6 +34,53 @@ collection = client.get_or_create_collection(
     name="document_storage", 
 )
 
+def navigate_home():
+    """Returns to the home page by toggling visibility."""
+    return gr.update(visible=True), gr.update(visible=False)
+
+def navigate_classification():
+    """Returns to the classification page by toggling visibility."""
+    return gr.update(visible=True), gr.update(visible=False)
+
+def navigate_search():
+    """Returns to the search page by toggling visibility."""
+    return gr.update(visible=True), gr.update(visible=False)
+
+def navigate_savedDocuments():
+    """Returns to the search page by toggling visibility."""
+    return gr.update(visible=True), gr.update(visible=False)
+
+def show_page(page):
+    return {
+        "home": [gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), gr.update(visible=False)],
+        "classification": [gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False)],
+        "search": [gr.update(visible=False), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False)],
+        "savedDocuments": [gr.update(visible=False), gr.update(visible=False), gr.update(visible=False), gr.update(visible=True)],
+    }[page]
+
+def upload_file(file, notes): #Another function exists below, KIV
+    if file is not None:
+        file_path = file.name  # Save file path for reuse
+        file_name = os.path.basename(file.name)  # Extract just the file name
+        status = f"✅ File '{file_name}' uploaded successfully!\n\n📌 Notes: {notes if notes else 'No additional notes'}"
+        return status, file_path, gr.update(visible=False), gr.update(visible=True)
+    else:
+        return "❌ No file uploaded.", None
+
+## For now, document preview only supports PDF files ##
+def preview_document(file):
+    """Extracts text preview from PDF files (first page only)."""
+    if file is None:
+        return "No file uploaded."
+    
+    if file.name.endswith(".pdf"):
+        with open(file.name, "rb") as f:  # Open the file explicitly
+            reader = PdfReader(f)
+            text = reader.pages[0].extract_text() if reader.pages else "Empty PDF"
+        return text[:500]  # Show only first 500 characters
+    
+    return "Unsupported file type."
+
 def search_by_tag_and_query(query, category_tag):
     results = collection.query(
         query_texts=[query],
@@ -54,7 +102,7 @@ def search_by_tag_and_query(query, category_tag):
     if collection_retrieval:
         for item in collection_retrieval:
             print(item)
-    return collection_retrieval if collection_retrieval else "No results found."""
+    return collection_retrieval if collection_retrieval else "No results found.""" 
 
 def extract_text(file):
 
@@ -197,6 +245,7 @@ def process_file(file_uploader, notes="", chosen_model="deepseek-r1:7b"):
 with gr.Blocks(css="""
     @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css');
     @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700&display=swap');
+    @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css');
 
     * {
         font-family: 'Manrope', sans-serif !important;
@@ -220,6 +269,8 @@ with gr.Blocks(css="""
         border-radius: 0px;
         height: 85px;
     }
+    
+/* Style for the "Upload Document(s)" button */
 
     /* Search box */
     .search-box {
@@ -243,7 +294,6 @@ with gr.Blocks(css="""
         font-size: 20px;
     }
 
-    /* Style for the "Upload Document(s)" button */
     .gr-button {
         background-color: #cc0000 !important;
         color: white !important;
@@ -283,6 +333,34 @@ with gr.Blocks(css="""
         font-weight: bold;
         text-align: right;
     }
+    
+    .sidebar {
+        background-color: #f8f8f8;
+        padding: 20px;
+        height: 100vh; /* Full height */
+        width: 200px;
+        font-weight: bold;
+    }
+
+    .sidebar-item {
+        padding: 10px;
+        font-size: 16px;
+        color: black;
+        cursor: pointer; /* Makes it look clickable */
+    }
+
+    .sidebar-item:hover {
+        color: blue; /* Changes color on hover */
+    }
+
+    .search-button-container {
+        width: 160px;
+    }      
+
+    .search-box {
+        width: 800px;
+    }   
+    
 
 """) as demo:
 
@@ -290,52 +368,212 @@ with gr.Blocks(css="""
     with gr.Row(elem_classes="top-bar"):
         gr.Markdown("**NOMURA**", elem_classes="logo")
 
-        # Search box with search icon
-        gr.HTML("""
-            <div class="search-box">               
-                <input type="text" placeholder="Search..." />
-                <i class="fas fa-search"></i>  <!-- Search icon -->
-            </div>
-        """)
-
         # Profile section in the top-right corner
         gr.HTML("""
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
             <div class="profile-section">             
-                <span class="profile-name">Welcome back!<br>Rabia Israr</span>
+                <span class="profile-name">Welcome back!<br>Xavier Lee</span>
                 <i class="fas fa-user-circle"></i>  <!-- Profile icon -->
             </div>
         """)
 
-    with gr.Row():
-        with gr.Column(scale=1):
-            gr.Markdown("### Home")
-            gr.Markdown("### Search")
+    # Define home and classification pages
+    home_page = gr.Column(visible=True)
+    classification_page = gr.Column(visible=False)
+    search_page = gr.Column(visible=False)
+    savedDocuments_page = gr.Column(visible=False)
+
+    # HOME 
+    with home_page:
+        with gr.Row():
+            with gr.Column(scale=1):
+                gr.HTML("<div class='nav-item' onclick='document.getElementById('home_btn').click()'>🏠 Home</div>")
+                gr.HTML("<div class='nav-item' onclick='document.getElementById('search_btn').click()'>🔍 Search</div>")
+                gr.HTML("<div class='sidebar-item' onclick='document.getElementById('savedDocs_btn').click()'>📂 Saved Documents</div>")
+                gr.HTML("<div class='sidebar-item' onclick='document.getElementById('settings_btn').click()'>⚙️ Settings</div>")
+
+            with gr.Column(scale=4):
+                gr.Markdown("### Upload your Document(s) here")
+                file_uploader = gr.File(label="Upload your document", type="filepath")
+                chosen_model = gr.Dropdown(choices=["deepseek-r1:7b", "llama3.1", "phi4:14b"], label="Choose a model", value="deepseek-r1:7b")
+                notes = gr.Textbox(placeholder="Write any comments you have about your document(s) here.", label="Comments")       
+                upload_button = gr.Button("Upload Document(s)")
+                output_text = gr.Textbox(label="Upload Status", interactive=False)
+                classify_button = gr.Button("Classify Document(s)")
+
+                # Link button to file upload
+                upload_button.click(
+                    fn=upload_file,
+                    inputs=[file_uploader, notes],
+                    outputs=[output_text, file_uploader] 
+                )
+
+                classify_button.click(navigate_classification, outputs=[classification_page, home_page])
+                
+
+    # CLASSIFICATION 
+    with classification_page:
+        ## Storing does not seem to work ##
+        classification_file = gr.State()  # Store file path in state
+
+        with gr.Row():
+            with gr.Column(scale=1):
+                gr.HTML("<div class='nav-item' onclick='document.getElementById('home_btn').click()'>🏠 Home</div>")
+                gr.HTML("<div class='nav-item' onclick='document.getElementById('search_btn').click()'>🔍 Search</div>")
+                gr.HTML("<div class='sidebar-item' onclick='document.getElementById('savedDocs_btn').click()'>📂 Saved Documents</div>")
+                gr.HTML("<div class='sidebar-item' onclick='document.getElementById('settings_btn').click()'>⚙️ Settings</div>")
+
+            with gr.Column(scale=3):
+                gr.Markdown("### Document Preview")
+                file_uploader = gr.File(label="Upload Document") # uploaded file from home page should show here
+                document_preview = gr.Textbox(label="Document Preview", interactive=False)   
+                file_uploader.change(preview_document, inputs=classification_file, outputs=document_preview)           
+
+                with gr.Row():
+                    reclassify_button = gr.Button("Reclassify", elem_classes="reclassify-button")
+                    backtoHome_button = gr.Button("New classification", elem_classes="backtoHome-button") # reset all fields from prev page automatically
+
+            with gr.Column(scale=1):
+                gr.Markdown("### Classification Results")
+                classification_contentType = gr.TextArea(label="Content type", interactive=False)
+                classification_contentType = gr.TextArea(label="Author(s)", interactive=False)
+                classification_contentType = gr.TextArea(label="Posted at", interactive=False)
+
+            # Button to return to home page
+            backtoHome_button.click(navigate_home, outputs=[home_page, classification_page])
+
+            # Button to search page to test
+            searchPage_button = gr.Button("Search", elem_classes="")
+            searchPage_button.click(navigate_search, outputs=[search_page, classification_page])
+        
+
+    # SEARCH 
+    with search_page:
+        with gr.Row():
+            with gr.Column(scale=1):
+                gr.HTML("<div class='nav-item' onclick='document.getElementById('home_btn').click()'>🏠 Home</div>")
+                gr.HTML("<div class='nav-item' onclick='document.getElementById('search_btn').click()'>🔍 Search</div>")
+                gr.HTML("<div class='sidebar-item' onclick='document.getElementById('savedDocs_btn').click()'>📂 Saved Documents</div>")
+                gr.HTML("<div class='sidebar-item' onclick='document.getElementById('settings_btn').click()'>⚙️ Settings</div>")
+
+            with gr.Column(scale=5):
+                with gr.Row():
+                    with gr.Column(): 
+                        search_input = gr.Textbox(placeholder="Enter your search query", elem_classes="search-box")
+                    
+                    with gr.Column(): 
+                        # filter by content type
+                        filters_contentType = gr.Dropdown(choices=["Content Type(s)", "Option 1", "Option 2", "Option 3"], 
+                      multiselect=True, elem_classes="filter-box", value="Content Type(s)")
+                    with gr.Column(): 
+                        # filter by author
+                        filters_authors = gr.Dropdown(choices=["Author(s)", "Option 1", "Option 2", "Option 3"], 
+                      multiselect=True, elem_classes="filter-box", value="Author(s)")
+                    with gr.Column(): 
+                        # filter by date
+                        filters_postedAt = gr.Dropdown(choices=["Date(s)", "Option 1", "Option 2", "Option 3"], 
+                      multiselect=True, elem_classes="filter-box", value="Date(s)")
+                    
+                    filters = filters_contentType + filters_authors + filters_postedAt
+
+                    with gr.Column():
+                        search_button = gr.Button("Search", elem_classes="search-button-container")
+
+                search_documents_output = gr.TextArea(label="Search Results", interactive=False)
+
+
+            ## TEMP hardcoded outputs ##
+            search_button.click(lambda query, num=None: "Iterate through fake database.", 
+                    inputs=[search_input, filters], 
+                    outputs=search_documents_output)
+
+
+
+
+    # SAVED DOCUMENTS
+    with savedDocuments_page:
+        with gr.Row():
+            with gr.Column(scale=1):
+                gr.HTML("<div class='nav-item' onclick='document.getElementById('home_btn').click()'>🏠 Home</div>")
+                gr.HTML("<div class='nav-item' onclick='document.getElementById('search_btn').click()'>🔍 Search</div>")
+                gr.HTML("<div class='sidebar-item' onclick='document.getElementById('savedDocs_btn').click()'>📂 Saved Documents</div>")
+                gr.HTML("<div class='sidebar-item' onclick='document.getElementById('settings_btn').click()'>⚙️ Settings</div>")
+            
             gr.Markdown("### Saved Documents")
-            gr.Markdown("### Settings")
 
-        with gr.Column(scale=4):
-            gr.Markdown("### Upload your Document(s) here")
-            file_uploader = gr.File(label="Upload your document", type="filepath")
-            chosen_model = gr.Dropdown(choices=["deepseek-r1:7b", "llama3.1", "phi4:14b"], label="Choose a model", value="deepseek-r1:7b")
-            notes = gr.Textbox(placeholder="Write any comments you have about your document(s) here.", label="Comments")
-            upload_button = gr.Button("Upload Document(s)")
-            reset_button = gr.Button("Reset")
+    with existing_page:
+        with gr.Row():
+            with gr.Column(scale=1):
+                gr.Markdown("### Home")
+                gr.Markdown("### Search")
+                gr.Markdown("### Saved Documents")
+                gr.Markdown("### Settings")
 
-            output_text = gr.Textbox(label="Upload Status", interactive=False)
+            with gr.Column(scale=4):
+                gr.Markdown("### Upload your Document(s) here")
+                file_uploader = gr.File(label="Upload your document", type="filepath")
+                chosen_model = gr.Dropdown(choices=["deepseek-r1:7b", "llama3.1", "phi4:14b"], label="Choose a model", value="deepseek-r1:7b")
+                notes = gr.Textbox(placeholder="Write any comments you have about your document(s) here.", label="Comments")
+                upload_button = gr.Button("Upload Document(s)")
+                reset_button = gr.Button("Reset")
 
-            gr.Markdown("---")
-            gr.Markdown("### Search")
-            query = gr.Textbox(label="Search", placeholder="Enter your search query")
-            category_tag = gr.Dropdown(choices=choices, label="Category Filter", value=choices[0])
-            search_button = gr.Button("Search")
-            search_documents_output = gr.TextArea(label="Search Results", interactive=False)
-            search_button.click(search_by_tag_and_query, inputs=[query, category_tag], outputs=search_documents_output)
-            upload_button.click(process_file, inputs=[file_uploader, notes, chosen_model], outputs=output_text)
+                output_text = gr.Textbox(label="Upload Status", interactive=False)
+
+                gr.Markdown("---")
+                gr.Markdown("### Search")
+                query = gr.Textbox(label="Search", placeholder="Enter your search query")
+                category_tag = gr.Dropdown(choices=choices, label="Category Filter", value=choices[0])
+                search_button = gr.Button("Search")
+                search_documents_output = gr.TextArea(label="Search Results", interactive=False)
+                search_button.click(search_by_tag_and_query, inputs=[query, category_tag], outputs=search_documents_output)
+                upload_button.click(process_file, inputs=[file_uploader, notes, chosen_model], outputs=output_text)
 
     # Log out button container at the bottom-left of the page
     with gr.Row(elem_classes="logout-button-container"):
         gr.Button("Log out")
 
+    # Invisible helper buttons for routing
+    home_btn = gr.Button(visible=False, elem_id="home_btn")
+    search_btn = gr.Button(visible=False, elem_id="search_btn")
+    savedDocs_btn = gr.Button(visible=False, elem_id="savedDocs_btn")
+    settings_btn = gr.Button(visible=False, elem_id="settings_btn")
+
+
+    home_btn.click(fn=show_page, inputs=[gr.State("home")], outputs=[home_page, classification_page, search_page, savedDocuments_page])
+    search_btn.click(fn=show_page, inputs=[gr.State("search")], outputs=[home_page, classification_page, search_page, savedDocuments_page])
+    savedDocs_btn.click(fn=show_page, inputs=[gr.State("savedDocuments")], outputs=[home_page, classification_page, search_page, savedDocuments_page])
+
+
+# Inject JavaScript to trigger invisible buttons for navigation
+with demo:
+    gr.HTML("""
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.getElementById("home_btn").style.display = "none";
+        document.getElementById("search_btn").style.display = "none";
+        document.getElementById("savedDocs_btn").style.display = "none";
+        document.getElementById("settings_btn").style.display = "none";
+    });
+    </script>
+    """)
+
+
 if __name__ == "__main__":
     demo.launch()
+
+
+
+    # home_btn = gr.Button(visible=False)
+    # # classification_btn = gr.Button(visible=False)
+    # upload_btn = gr.Button(visible=False)
+    # savedDocs_btn = gr.Button(visible=False)
+
+    # <script>
+    #     function navigateTo(page) {
+    #         if (page === 'home') { document.querySelector('button:nth-of-type(1)').click(); }
+    #         if (page === 'search') { document.querySelector('button:nth-of-type(2)').click(); }
+    #         if (page === 'savedDocuments') { document.querySelector('button:nth-of-type(3)').click(); }
+    #     }
+    # </script>
+
     
