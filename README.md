@@ -18,6 +18,8 @@ KIV
 
 ## Current (Proposed) Schema
 
-* `doc_type`: `str` - Type of documents -- Risk, Compliance, Contract, Regulation, Onboarding, Client engagement
+* `doc_type`: `str` -- Type of documents -- Risk, Compliance, Contract, Regulation, Onboarding, Client engagement
+    * `level`: `int` -- 1 means internal/external, 2 means 
 * `doc_id`: `str` -- UUID4 generation of unique document ID
 * `date_uploaded`: `datetime` - Date the document was uploaded
+* 
