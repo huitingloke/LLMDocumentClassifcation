@@ -10,15 +10,53 @@ import csv
 import io
 import json
 import time
-<<<<<<< Updated upstream
-=======
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.llms import OpenAI 
 from dotenv import dotenv_values
 import langchain_implementation
 
->>>>>>> Stashed changes
+config = dotenv_values(".env")  
+# Step 1: Define the prompt template
+prompt_template = """
+Given the following document text, classify it into one of the following categories:
+
+Level 1 Categories: 
+- internal
+- external
+
+If the document falls under internal, further classify it into:
+Level 2 Categories (Internal): 
+- Constitution
+- Contracts
+- T&Cs
+- Privacy Policy
+- Own Financial Data & Reports
+
+If the document falls under external, further classify it into:
+Level 2 Categories (External): 
+- Regulation
+- Notices, News
+- Financial Data/Reports
+- Client Info
+
+Only return the classification in the following string format:
+```json
+{
+  "level_1_category": "internal" OR "external",
+  "level_2_category": "[topic]"
+}
+"""
+
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
+if OPENAI_API_KEY:
+    llm = OpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
+    chain = LLMChain(prompt=PromptTemplate(input_variables=["document_text"], template=prompt_template), llm=llm)
+    # ... rest of your code ...
+else:
+    print("Error: OPENAI_API_KEY environment variable not set.")
 
 length_of_text = 6000
 # Category Tag choices
@@ -89,9 +127,11 @@ def preview_document(file):
     
     return "Unsupported file type."
 
-def search_by_tag_and_query(query, filters_contentType, filters_authors, filters_postedAt):
+
+def search_by_tag_and_query(search_input, filters_contentType, filters_authors, filters_postedAt):
+
     results = collection.query(
-        query_texts=[query],
+        query_texts=[search_input],
         n_results=10000000000000000000,
         where={"level2": filters_contentType},
     )
@@ -157,62 +197,6 @@ def extract_text(file):
     else: 
         return "Unsupported file type"
 
-def generate_response(document_text, chosen_model):
-
-    prompt = """
-    Given the following document text, classify it into one of the following categories:
-
-    Level 1 Categories: 
-    - internal
-    - external
-
-    If the document falls under internal, further classify it into:
-    Level 2 Categories (Internal): 
-    - Constitution
-    - Contracts
-    - T&Cs
-    - Privacy Policy
-    - Own Financial Data & Reports
-
-    If the document falls under external, further classify it into:
-    Level 2 Categories (External): 
-    - Regulation
-    - Notices, News
-    - Financial Data/Reports
-    - Client Info
-
-    Only return the classification in the following string format:
-    ```json
-    {
-      "level_1_category": "internal" OR "external",
-      "level_2_category": "[topic]"
-    }
-    ```
-
-    Do not elaborate on your response. It must only be JSON. 
-
-    **Document Text**:
-    """
-
-    response: ChatResponse = chat(model=chosen_model, messages=[
-        {
-            'role': 'user',
-            'content': f"{prompt}: {document_text}",
-        },
-    ])
-    # or access fields directly from the response object
-
-    model_response = response.message.content
-    try:
-
-        filtered_response = model_response.split("```")[1] if "```" in model_response else model_response
-        filtered_response = model_response.split("json")[1].lstrip().split("```")[0].strip() if "json" in model_response else model_response 
-        
-    except: 
-        filtered_response = model_response
-    print(filtered_response)
-    return filtered_response
-
 def process_file(file_uploader, notes="", chosen_model="deepseek-r1:7b"):
 
     start_time = time.time()
@@ -227,9 +211,7 @@ def process_file(file_uploader, notes="", chosen_model="deepseek-r1:7b"):
         metadata["source"] = ""
         metadata["comments"] = notes or "NA"
 
-        classified = generate_response(document_text=text[:length_of_text], chosen_model=chosen_model)
-        print("CLASSIFIED: " + classified)
-        classified = json.loads(classified)
+        classified = langchain_implementation.generate_response(document_text=text)
         metadata["level1"] = classified["level_1_category"]
         metadata["level2"] = classified["level_2_category"]
         metadata["model"] = chosen_model
@@ -392,6 +374,7 @@ with gr.Blocks(css="""
     savedDocuments_page = gr.Column(visible=False)
     existing_page = gr.Column(visible=False)
 
+
     # HOME 
     with home_page:
         with gr.Row():
@@ -490,7 +473,8 @@ with gr.Blocks(css="""
 
 
             ## TEMP hardcoded outputs ##
-            search_button.click(lambda query, num=None: "Iterate through fake database.", 
+
+            search_button.click(search_by_tag_and_query, 
                     inputs=[search_input, filters_contentType, filters_authors, filters_postedAt], 
                     outputs=search_documents_output)
 
