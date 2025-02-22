@@ -15,6 +15,6 @@
             "Notices" OR
             "News" OR
             "Financial Data/Reports" OR
-            "Client Info (e.g., for onboarding)"
+            "Client Info"
     "date": date
 }

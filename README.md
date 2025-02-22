@@ -22,9 +22,12 @@ KIV
 * `doc_id`: `str` -- UUID4 generation of unique document ID
 * `date_uploaded`: `datetime` - Date the document was uploaded
 
+## Current (Proposed) Schema
 
-> [!IMPORTANT]  
-> Do not nest the folders within each other.
+* `doc_type`: `str` - Type of documents -- Risk, Compliance, Contract, Regulation, Onboarding, Client engagement
+* `doc_id`: `str` -- UUID4 generation of unique document ID
+* `date_uploaded`: `datetime` - Date the document was uploaded
 
 > [!NOTE]  
 > The assistance of ChatGPT and Cody were used to aid in the programming of this repository. 
+
