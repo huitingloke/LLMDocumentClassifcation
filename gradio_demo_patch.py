@@ -1,6 +1,6 @@
 import gradio as gr
 import os
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 # from docx import Document
 import pandas as pd
 
@@ -222,7 +222,7 @@ with gr.Blocks(css="""
             with gr.Column(scale=4):
                 gr.Markdown("### Upload your Document(s) here")
                 file_uploader = gr.File(label="Upload your document", type="filepath")
-                chosen_model = gr.Dropdown(label="Choose a model", choices=["deepseek-r1:7b", "llama3.1", "phi4:14b"],  value="deepseek-r1:7b", interactive=True)
+                chosen_model = gr.Dropdown(label="Choose a model", choices=["deepseek-r1:7b", "llama3.1", "phi4:14b"], value="deepseek-r1:7b", interactive=True)
                 notes = gr.Textbox(placeholder="Write any comments you have about your document(s) here.", label="Comments")       
                 upload_button = gr.Button("Upload Document(s)")
                 output_text = gr.Textbox(label="Upload Status", interactive=False)
