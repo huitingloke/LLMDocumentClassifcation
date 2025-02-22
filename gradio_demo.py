@@ -11,6 +11,45 @@ import csv
 import io
 import json
 import time
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
+from langchain.llms import OpenAI 
+
+# Step 1: Define the prompt template
+prompt_template = """
+Given the following document text, classify it into one of the following categories:
+
+Level 1 Categories: 
+- internal
+- external
+
+If the document falls under internal, further classify it into:
+Level 2 Categories (Internal): 
+- Constitution
+- Contracts
+- T&Cs
+- Privacy Policy
+- Own Financial Data & Reports
+
+If the document falls under external, further classify it into:
+Level 2 Categories (External): 
+- Regulation
+- Notices, News
+- Financial Data/Reports
+- Client Info
+
+Only return the classification in the following string format:
+```json
+{
+  "level_1_category": "internal" OR "external",
+  "level_2_category": "[topic]"
+}
+"""
+
+# Step 2: Set up LangChain components
+llm = OpenAI(temperature=0)  # Initialize OpenAI model
+chain = LLMChain(prompt=PromptTemplate(input_variables=["document_text"], template=prompt_template), llm=llm)
+
 
 length_of_text = 6000
 # Category Tag choices
@@ -149,61 +188,25 @@ def extract_text(file):
     else: 
         return "Unsupported file type"
 
-def generate_response(document_text, chosen_model):
+# Step 3: Function to call LangChain and return JSON formatted response
+def generate_response_with_langchain(document_text: str) -> dict:
+    response = chain.run(document_text=document_text)
 
-    prompt = """
-    Given the following document text, classify it into one of the following categories:
-
-    Level 1 Categories: 
-    - internal
-    - external
-
-    If the document falls under internal, further classify it into:
-    Level 2 Categories (Internal): 
-    - Constitution
-    - Contracts
-    - T&Cs
-    - Privacy Policy
-    - Own Financial Data & Reports
-
-    If the document falls under external, further classify it into:
-    Level 2 Categories (External): 
-    - Regulation
-    - Notices, News
-    - Financial Data/Reports
-    - Client Info
-
-    Only return the classification in the following string format:
-    ```json
-    {
-      "level_1_category": "internal" OR "external",
-      "level_2_category": "[topic]"
-    }
-    ```
-
-    Do not elaborate on your response. It must only be JSON. 
-
-    **Document Text**:
-    """
-
-    response: ChatResponse = chat(model=chosen_model, messages=[
-        {
-            'role': 'user',
-            'content': f"{prompt}: {document_text}",
-        },
-    ])
-    # or access fields directly from the response object
-
-    model_response = response.message.content
+    # Ensure the response is returned in JSON format
     try:
+        start = response.find('{')
+        end = response.rfind('}') + 1
+        json_response = response[start:end]
+        return json.loads(json_response)
+    except Exception as e:
+        print(f"Error parsing JSON: {e}")
+        return {"error": "Invalid response format"}
 
-        filtered_response = model_response.split("```")[1] if "```" in model_response else model_response
-        filtered_response = model_response.split("json")[1].lstrip().split("```")[0].strip() if "json" in model_response else model_response 
-        
-    except: 
-        filtered_response = model_response
-    print(filtered_response)
-    return filtered_response
+# Step 4: Update your existing `generate_response` function
+def generate_response(document_text, chosen_model):
+    return generate_response_with_langchain(document_text)
+
+
 
 def process_file(file_uploader, notes="", chosen_model="deepseek-r1:7b"):
 
