@@ -3,7 +3,6 @@ import os
 from pypdf import PdfReader
 import chromadb
 import uuid
-import sys # To view print messages from the same console
 import datetime
 from ollama import ChatResponse, chat
 from docx import Document
@@ -128,7 +127,9 @@ def preview_document(file):
     
     return "Unsupported file type."
 
+
 def search_by_tag_and_query(search_input, filters_contentType, filters_authors, filters_postedAt):
+
     results = collection.query(
         query_texts=[search_input],
         n_results=10000000000000000000,
@@ -371,7 +372,8 @@ with gr.Blocks(css="""
     classification_page = gr.Column(visible=False)
     search_page = gr.Column(visible=False)
     savedDocuments_page = gr.Column(visible=False)
-    existing_page = gr.Column(visible=True)
+    existing_page = gr.Column(visible=False)
+
 
     # HOME 
     with home_page:
@@ -385,7 +387,7 @@ with gr.Blocks(css="""
             with gr.Column(scale=4):
                 gr.Markdown("### Upload your Document(s) here")
                 file_uploader = gr.File(label="Upload your document", type="filepath")
-                chosen_model = gr.Dropdown(choices=["deepseek-r1:7b", "llama3.1", "phi4:14b"], label="Choose a model", value="deepseek-r1:7b")
+                chosen_model = gr.Dropdown(choices=["deepseek-r1:7b", "llama3.1", "phi4:14b", "gpt3.5-turbo"], label="Choose a model", value="gpt3.5-turbo", interactive=True)
                 notes = gr.Textbox(placeholder="Write any comments you have about your document(s) here.", label="Comments")       
                 upload_button = gr.Button("Upload Document(s)")
                 output_text = gr.Textbox(label="Upload Status", interactive=False)
@@ -471,6 +473,7 @@ with gr.Blocks(css="""
 
 
             ## TEMP hardcoded outputs ##
+
             search_button.click(search_by_tag_and_query, 
                     inputs=[search_input, filters_contentType, filters_authors, filters_postedAt], 
                     outputs=search_documents_output)
