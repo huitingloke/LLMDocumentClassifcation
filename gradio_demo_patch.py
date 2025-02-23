@@ -3,7 +3,22 @@ import os
 from pypdf import PdfReader
 # from docx import Document
 import pandas as pd
+import database_implementation
+import assistive_functions
+import langchain_implementation
+from docx import Document
 
+choices = [
+    "Regulation",
+    "Notices, News",
+    "Financial Data/Reports",
+    "Client Info",
+    "Constitution",
+    "Contracts",
+    "T&Cs",
+    "Privacy Policy",
+    "Own Financial Data & Reports",
+]
 def reset_home():
     return None, "", "", ""
 
@@ -26,10 +41,12 @@ def navigate_savedDocuments():
 def upload_file(file, notes):
     if file is not None:
         file_name = os.path.basename(file.name)  # Extract just the file name
-        status = f"✅ File '{file_name}' uploaded successfully!\n\n📌 Notes: {notes if notes else 'No additional notes'}"
+        process = assistive_functions.process_file(
+            file_name, 
+            notes=notes,
+        )
+        status = f"✅ File '{file_name}' uploaded successfully!\n\n📌 Notes: {notes if notes else 'No additional notes'}" if process else "❌ No file uploaded."
         return status
-    else:
-        return "❌ No file uploaded."
 
 # def upload_to_classify(file):
 #     if file is not None:
@@ -55,14 +72,13 @@ def upload_to_classify_preview_document(file):
         except Exception as e:
             return f"Error reading PDF: {e}", gr.update(visible=False), gr.update(visible=True)
 
-    # # DOCX (Word) Preview ## SERENE hit dependency issues, BEEFY are u able to run in VM w this uncommented ##
-    # elif file_name.endswith(".docx"):
-    #     try:
-    #         doc = Document(file.name)
-    #         text = "\n".join([para.text for para in doc.paragraphs])
-    #         return text[:500] if text else "Empty DOCX file", gr.update(visible=False), gr.update(visible=True)
-    #     except Exception as e:
-    #         return f"Error reading DOCX: {e}", gr.update(visible=False), gr.update(visible=True)
+    elif file.name.lower().endswith(".docx") or file.name.endswith(".doc"):
+        print("Filetype: Word", file.name)
+        document = Document(file)
+        text = ""
+        for para in document.paragraphs:
+            text += para.text
+        return text[:500]
 
     # CSV Preview
     elif file_name.endswith(".csv"):
@@ -222,7 +238,7 @@ with gr.Blocks(css="""
             with gr.Column(scale=4):
                 gr.Markdown("### Upload your Document(s) here")
                 file_uploader = gr.File(label="Upload your document", type="filepath")
-                chosen_model = gr.Dropdown(label="Choose a model", choices=["deepseek-r1:7b", "llama3.1", "phi4:14b"], value="deepseek-r1:7b", interactive=True)
+                chosen_model = gr.Dropdown(label="Choose a model", choices=["gpt3.5-turbo", "deepseek-r1:7b", "llama3.1", "phi4:14b"], value="gpt3.5-turbo", interactive=True)
                 notes = gr.Textbox(placeholder="Write any comments you have about your document(s) here.", label="Comments")       
                 upload_button = gr.Button("Upload Document(s)")
                 output_text = gr.Textbox(label="Upload Status", interactive=False)
@@ -231,27 +247,24 @@ with gr.Blocks(css="""
 
                 # resets all entries upon clicking reset button
                 reset_button.click(
-                fn=reset_home,
-                outputs=[file_uploader, notes, output_text, chosen_model]
+                    fn=reset_home,
+                    outputs=[file_uploader, notes, output_text, chosen_model]
                 )
 
                 # Link button to file upload
                 upload_button.click(
-                fn=upload_file,
-                inputs=[file_uploader, notes],
-                outputs=[output_text]
+                    fn=upload_file,
+                    inputs=[file_uploader, notes],
+                    outputs=[output_text]
                 )
 
                 document_preview_output = gr.State()  # Store document preview in state
 
                 classify_button.click(
-                fn=upload_to_classify_preview_document,
-                inputs=[file_uploader],
-                outputs=[document_preview_output, home_page, classification_page]
-                )
-
-                document_preview_output = gr.State()  # Store document preview in state
-              
+                    fn=upload_to_classify_preview_document,
+                    inputs=[output_text],
+                    outputs=[document_preview_output, home_page, classification_page]
+                )              
 
     # CLASSIFICATION 
     ## Need to toggle between diff document previews and classification results for diff documents ##
@@ -319,12 +332,10 @@ with gr.Blocks(css="""
                 # Single row containing the search bar and filters
                 with gr.Row():
                     search_input = gr.Textbox(label="Search query", placeholder="Enter your search query", elem_classes="search-box", scale=3)
-                    filters_contentType = gr.Dropdown(label="Content Type(s)", choices=["Option 1", "Option 2", "Option 3"], 
+                    filters_contentType = gr.Dropdown(label="Content Type(s)", choices=choices, 
                                                     multiselect=True, elem_classes="filter-box", scale=1)
-                    filters_authors = gr.Dropdown(label="Author(s)", choices=["Option 1", "Option 2", "Option 3"], 
-                                                multiselect=True, elem_classes="filter-box", scale=1)
-                    filters_postedAt = gr.Dropdown(label="Posted at", choices=["Option 1", "Option 2", "Option 3"], 
-                                                multiselect=True, elem_classes="filter-box", scale=1)
+                    filters_authors = gr.Textbox(label="Author(s)", scale=1, placeholder="Separate names by commas")
+                    filters_postedAt = gr.Textbox(label="Posted at", scale=1)
                     search_button = gr.Button("Search", elem_classes="search-button-container", scale=1)
 
                 search_documents_output = gr.TextArea(label="Search Results", interactive=False)
@@ -335,8 +346,9 @@ with gr.Blocks(css="""
 
             # Trigger search with all filters as inputs
             search_button.click(perform_search, 
-                                inputs=[search_input, filters_contentType, filters_authors, filters_postedAt], 
-                                outputs=search_documents_output)
+                inputs=[search_input, filters_contentType, filters_authors, filters_postedAt], 
+                outputs=search_documents_output
+            )
 
 
     # SAVED DOCUMENTS

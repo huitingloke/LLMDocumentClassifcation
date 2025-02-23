@@ -197,14 +197,13 @@ def extract_text(file):
     else: 
         return "Unsupported file type"
 
-def process_file(file_uploader, notes="", chosen_model="deepseek-r1:7b"):
+def process_file(text, notes="", chosen_model="deepseek-r1:7b"):
 
     start_time = time.time()
     if file_uploader is not None:
         metadata = {}
-        text = extract_text(file_uploader)
 
-        if text == "WIP" or text == "Unsupported file type":
+        if text == "Unsupported file type":
             return "Work in Progress"
 
         metadata["date"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
