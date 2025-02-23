@@ -3,3 +3,5 @@ env
 chromadb_persistent_storage
 
 __pycache__
+
+file_storage.db
