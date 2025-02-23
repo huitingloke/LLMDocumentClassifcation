@@ -5,7 +5,17 @@ import datetime
 from docx import Document
 import time
 import langchain_implementation
+import database_implementation
 import pandas as pd
+import sqlite3
+
+conn = sqlite3.connect('file_storage.db')
+conn.execute('''CREATE TABLE IF NOT EXISTS files (
+            id TEXT PRIMARY KEY,
+            filename TEXT,
+            filedata BLOB
+        );''')
+conn.commit()
 
 length_of_text = 6000
 # Category Tag choices
@@ -58,9 +68,9 @@ def extract_text(file):
     elif file_name.endswith(".csv"):
         try:
             df = pd.read_csv(file.name, nrows=5)  # Read first 5 rows
-            return df.to_string(index=False), gr.update(visible=False), gr.update(visible=True)  # Convert to string
+            return df.to_string(index=False)
         except Exception as e:
-            return f"Error reading CSV: {e}", gr.update(visible=False), gr.update(visible=True)
+            return f"Error reading CSV: {e}"
 
     # Excel (XLSX) Preview
     elif file_name.endswith(".xlsx"):
@@ -80,7 +90,7 @@ def search_by_tag_and_query(search_input, filters_contentType, filters_authors, 
 
     results = collection.query(
         query_texts=[search_input],
-        n_results=10000000000000000000,
+        n_results=9999999,
         where={"level2": filters_contentType}, # may not work if it is searching a list
         include=["documents", "metadatas"],
     )
@@ -119,11 +129,14 @@ def process_file(file_uploader, notes="", chosen_model="gpt3.5-turbo"):
         metadata["level1"] = classified["level_1_category"]
         metadata["level2"] = classified["level_2_category"]
         metadata["model"] = chosen_model
+        uploaded_id = uuid.uuid4()
  
+        database_storage = database_implementation.store_file(conn, uploaded_id, file_uploader)
+
         collection.add(
             documents=[text],
             metadatas=[metadata],
-            ids=[uploaded_id:=str(uuid.uuid4())],
+            ids=[uploaded_id],
         )
 
         print(metadata, uploaded_id)

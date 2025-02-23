@@ -60,7 +60,7 @@ def upload_to_classify_preview_document(file):
     if file is None:
         return "No file uploaded."
     
-    file_name = file.name.lower()
+    file_name = file.lower()
 
     # PDF Preview
     if file_name.endswith(".pdf"):
@@ -264,7 +264,7 @@ with gr.Blocks(css="""
                     fn=upload_to_classify_preview_document,
                     inputs=[output_text],
                     outputs=[document_preview_output, home_page, classification_page]
-                )              
+                )
 
     # CLASSIFICATION 
     ## Need to toggle between diff document previews and classification results for diff documents ##

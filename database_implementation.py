@@ -23,6 +23,7 @@ def store_file(conn, file_id, file_path):
                          (file_id, filename, file_data))
             conn.commit()
             print(f"File '{filename}' stored successfully with ID {file_id}.")
+            return True
         except sqlite3.IntegrityError:
             print(f"Error: The file ID {file_id} already exists. Please choose a different ID.")
 
