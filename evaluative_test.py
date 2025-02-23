@@ -3,10 +3,11 @@ from pypdf import PdfReader
 import os
 from docx import Document
 import time
+import json
 
 
-folder_path = "./document_parsing"
-model_list = ["deepseek-r1:7b", "llama3.1", "phi4:14b"]
+folder_path = "Data"
+model_list = ["llama3.1"]
 
 def list_files_in_folder(folder_path):
     final_list = []
@@ -39,28 +40,29 @@ prompt = """
     Given the following document text, classify it into one of the following categories:
 
     **Level 1 Categories**: 
-    - internal
-    - external
+    - Internal
+    - External
 
-    If the document falls under "internal", further classify it into:
+    If the document falls under "Internal", further classify it into:
     **Level 2 Categories (Internal)**: 
-    - Constitution
-    - Contracts
+    - Employee Contracts
+    - Third Party Contracts
     - T&Cs
     - Privacy Policy
     - Own Financial Data & Reports
 
-    If the document falls under "external", further classify it into:
+    If the document falls under "External", further classify it into:
     **Level 2 Categories (External)**: 
-    - Regulation
-    - Notices, News
-    - Financial Data/Reports
+    - Regulations, Notices
+    - News
+    - External Financial Data, Reports
     - Client Info
+    - Compliance
 
     Please return the classification in the following JSON format:
     {
-      "level_1_category": "internal",
-      "level_2_category": "Constitution"
+      "level_1_category": "Internal",
+      "level_2_category": "Compliance"
     }
 
     Do not elaborate on anything in your response. I only want the JSON response.
@@ -68,16 +70,20 @@ prompt = """
     **Document Text**:
     """
 
+docs_parsed = 0
+l1_correct = 0
+l2_correct = 0
+
 with open("results.txt", "w", encoding="utf-8") as the_file:
 
     for file in list_files_in_folder(folder_path):
         print(file)
 
         document_text = extract_text(file)
+        if document_text == "Unsupported file type":
+            continue
         document_text = document_text.replace("\n", " ").split(" ")
         document_text = " ".join(document_text[0:250])
-
-        print(document_text)
 
         the_file.write(f"File: {file}\n\nDocument text snippet: {document_text}\n\n")
 
@@ -101,8 +107,37 @@ with open("results.txt", "w", encoding="utf-8") as the_file:
             MODEL: {model}
             {response['message']['content']}\n\n""")
 
+            print(file.split("\\")[-3])
+            print(file.split("\\")[-2])
+            response_json = json.loads(response.message.content)
+            print(response_json["level_1_category"])
+            print(response_json["level_2_category"])
+            if file.split("\\")[-2] == response_json["level_2_category"]:
+                l2_correct += 1
+            if file.split("\\")[-3] == response_json["level_1_category"]:
+                l1_correct += 1
+
             end_time = time.time()
             elapsed_time = end_time - start_time
             the_file.write(f"Time taken: {elapsed_time:.2f} seconds\n\n")
             print(response.message.content)
             # print(response["created_at"])
+        docs_parsed += 1
+        if l1_correct != 0:
+            the_file.write(f"Correctly classified level 1: {l1_correct} / {docs_parsed}")
+            the_file.write(f"Correctly classified level 2: {l2_correct} / {l1_correct}")
+            the_file.write(f"Accuracy level 1: {l1_correct/docs_parsed*100}%\n")
+            the_file.write(f"Accuracy level 2: {l2_correct/l1_correct*100}%\n")
+            print(f"Correctly classified level 1: {l1_correct} / {docs_parsed}")
+            print(f"Correctly classified level 2: {l2_correct} / {l1_correct}")
+            print(f"Accuracy level 1: {l1_correct/docs_parsed*100}%")
+            print(f"Accuracy level 2: {l2_correct/l1_correct*100}%")
+        else:
+            the_file.write(f"Correctly classified level 1: {l1_correct} / {docs_parsed}")
+            the_file.write(f"Correctly classified level 2: 0")
+            the_file.write(f"Accuracy level 1: {l1_correct/docs_parsed*100}%\n")
+            the_file.write(f"Accuracy level 2: 0%\n")
+            print(f"Correctly classified level 1: {l1_correct} / {docs_parsed}")
+            print(f"Correctly classified level 2: 0")
+            print(f"Accuracy level 1: {l1_correct/docs_parsed*100}%")
+            print(f"Accuracy level 2: 0%")
