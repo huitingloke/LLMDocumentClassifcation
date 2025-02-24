@@ -68,5 +68,5 @@ def generate_response_with_langchain(document_text: str) -> dict:
         return {"error": "An unexpected error occurred"}
 
 # Step 4: Update your existing `generate_response` function
-def generate_response(document_text, chosen_model):
+def generate_response(document_text):
     return generate_response_with_langchain(document_text)

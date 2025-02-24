@@ -43,21 +43,19 @@ def extract_text(file):
     """Extracts text preview from PDF, DOCX, CSV, and XLSX files."""
     if file is None:
         return "No file uploaded."
-    
-    file_name = file.name.lower()
 
     # PDF Preview
-    if file_name.endswith(".pdf"):
+    if file.endswith(".pdf"):
         try:
-            with open(file.name, "rb") as f:
+            with open(file, "rb") as f:
                 reader = PdfReader(f)
                 text = reader.pages[0].extract_text() if reader.pages else "Empty PDF"
-            return text[:500] , gr.update(visible=False), gr.update(visible=True) # Show only first 500 characters
+            return text[:500]
         except Exception as e:
-            return f"Error reading PDF: {e}", gr.update(visible=False), gr.update(visible=True)
+            return f"Error reading PDF: {e}"
 
-    elif file.name.lower().endswith(".docx") or file.name.endswith(".doc"):
-        print("Filetype: Word", file.name)
+    elif file.endswith(".docx") or file.endswith(".doc"):
+        print("Filetype: Word", file)
         document = Document(file)
         text = ""
         for para in document.paragraphs:
@@ -65,20 +63,20 @@ def extract_text(file):
         return text[:500]
 
     # CSV Preview
-    elif file_name.endswith(".csv"):
+    elif file.endswith(".csv"):
         try:
-            df = pd.read_csv(file.name, nrows=5)  # Read first 5 rows
+            df = pd.read_csv(file, nrows=5)  # Read first 5 rows
             return df.to_string(index=False)
         except Exception as e:
             return f"Error reading CSV: {e}"
 
     # Excel (XLSX) Preview
-    elif file_name.endswith(".xlsx"):
+    elif file.endswith(".xlsx"):
         try:
-            df = pd.read_excel(file.name, engine="openpyxl", nrows=5)
-            return df.to_string(index=False), gr.update(visible=False), gr.update(visible=True)
+            df = pd.read_excel(file, engine="openpyxl", nrows=5)
+            return df.to_string(index=False),
         except Exception as e:
-            return f"Error reading XLSX: {e}", gr.update(visible=False), gr.update(visible=True)
+            return f"Error reading XLSX: {e}"
 
     return "Unsupported file type."
 
@@ -118,18 +116,16 @@ def process_file(file_uploader, notes="", chosen_model="gpt3.5-turbo"):
         metadata = {}
         text = extract_text(file_uploader)
 
-        if text == "WIP" or text == "Unsupported file type":
-            return "Work in Progress"
-
         metadata["date"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         metadata["source"] = ""
         metadata["comments"] = notes or "NA"
 
         classified = langchain_implementation.generate_response(document_text=text)
+        print(classified)
         metadata["level1"] = classified["level_1_category"]
         metadata["level2"] = classified["level_2_category"]
         metadata["model"] = chosen_model
-        uploaded_id = uuid.uuid4()
+        uploaded_id = str(uuid.uuid4())
  
         database_storage = database_implementation.store_file(conn, uploaded_id, file_uploader)
 
@@ -145,6 +141,14 @@ def process_file(file_uploader, notes="", chosen_model="gpt3.5-turbo"):
         execution_time = end_time - start_time
         print(f"Execution time: {execution_time} seconds")
         
-        return f"File '{file_uploader.name}' uploaded successfully with these comments: {notes}"
+        return f"File '{file_uploader}' uploaded successfully with these comments: {notes}"
     
     return "No file uploaded."
+
+print("-------------------")
+print(process_file("contract_11.docx", "test_document1"))
+print("-------------------")
+print(process_file("Detailed_Board_Meeting_Financial_Summary.pdf", "test_document2"))
+print("-------------------")
+print(process_file("ByteShield_CyberSecurity_Privacy_Policy.pdf", "test_document3"))
+print("-------------------")
