@@ -145,10 +145,10 @@ def process_file(file_uploader, notes="", chosen_model="gpt3.5-turbo"):
     
     return "No file uploaded."
 
-print("-------------------")
+"""print("-------------------")
 print(process_file("contract_11.docx", "test_document1"))
 print("-------------------")
 print(process_file("Detailed_Board_Meeting_Financial_Summary.pdf", "test_document2"))
 print("-------------------")
 print(process_file("ByteShield_CyberSecurity_Privacy_Policy.pdf", "test_document3"))
-print("-------------------")
+print("-------------------")"""

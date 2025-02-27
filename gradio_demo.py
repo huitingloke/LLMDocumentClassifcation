@@ -1,24 +1,11 @@
 import gradio as gr
 import os
-from pypdf import PdfReader
-# from docx import Document
-import pandas as pd
-import database_implementation
-import assistive_functions
-import langchain_implementation
-from docx import Document
+import assistive_functions as af
+import langchain_implementation as li
+import database_implementation as dbi
 
-choices = [
-    "Regulation",
-    "Notices, News",
-    "Financial Data/Reports",
-    "Client Info",
-    "Constitution",
-    "Contracts",
-    "T&Cs",
-    "Privacy Policy",
-    "Own Financial Data & Reports",
-]
+# THE TERM "CONTENT_TYPE" IS REPRESENTATIVE OF CLASSIFICATION TYPE!
+
 def reset_home():
     return None, "", "", ""
 
@@ -38,65 +25,48 @@ def navigate_savedDocuments():
     """Returns to the search page by toggling visibility."""
     return gr.update(visible=False), gr.update(visible=False), gr.update(visible=False), gr.update(visible=True)
 
-def upload_file(file, notes):
-    if file is not None:
-        file_name = os.path.basename(file.name)  # Extract just the file name
-        process = assistive_functions.process_file(
-            file_name, 
-            notes=notes,
-        )
-        status = f"✅ File '{file_name}' uploaded successfully!\n\n📌 Notes: {notes if notes else 'No additional notes'}" if process else "❌ No file uploaded."
-        return status
-
-# def upload_to_classify(file):
-#     if file is not None:
-#         file_path = file.name  # Save file path for reuse
-#         return file_path, gr.update(visible=False), gr.update(visible=True)
-#     else:
-#         return "❌ No file uploaded.", None, None
-
-def upload_to_classify_preview_document(file):
-    """Extracts text preview from PDF, DOCX, CSV, and XLSX files."""
+def upload_to_classify_preview_document(file, notes, chosen_model):
+    """
+    Handles file upload status and extracts a preview for supported file types (PDF, DOCX, CSV, XLSX).
+    Returns an upload status message and the file preview.
+    """
     if file is None:
-        return "No file uploaded."
-    
-    file_name = file.lower()
+        return "❌ No file uploaded.", "", gr.update(visible=False), gr.update(visible=True), "-", "-", "-"
 
-    # PDF Preview
-    if file_name.endswith(".pdf"):
-        try:
-            with open(file.name, "rb") as f:
-                reader = PdfReader(f)
-                text = reader.pages[0].extract_text() if reader.pages else "Empty PDF"
-            return text[:500] , gr.update(visible=False), gr.update(visible=True) # Show only first 500 characters
-        except Exception as e:
-            return f"Error reading PDF: {e}", gr.update(visible=False), gr.update(visible=True)
+    file_names=[]
+    status_message =""
+    for f in file:
+        file_name = os.path.basename(f.name).lower() 
+        file_names.append(file_name)
+        status_message += f"✅ File '{file_name}' has been uploaded successfully!\n\n"
+    status_message = status_message + f"📌 Comments: {notes if notes else 'No additional notes'}"
 
-    elif file.name.lower().endswith(".docx") or file.name.endswith(".doc"):
-        print("Filetype: Word", file.name)
-        document = Document(file)
-        text = ""
-        for para in document.paragraphs:
-            text += para.text
-        return text[:500]
 
-    # CSV Preview
-    elif file_name.endswith(".csv"):
-        try:
-            df = pd.read_csv(file.name, nrows=5)  # Read first 5 rows
-            return df.to_string(index=False), gr.update(visible=False), gr.update(visible=True)  # Convert to string
-        except Exception as e:
-            return f"Error reading CSV: {e}", gr.update(visible=False), gr.update(visible=True)
+    try:
+        preview_text =""
+        for i in range(len(file_names)):          
+            with open(file[i].name, "rb") as f:
+                
+                text = af.extract_text(file[i])
+                if not text and i == 0: #change later, for now this is if the first file is an error!
+                    return status_message, "Unsupported file type.", gr.update(visible=False), gr.update(visible=True), "-", "-", "-"
 
-    # Excel (XLSX) Preview
-    elif file_name.endswith(".xlsx"):
-        try:
-            df = pd.read_excel(file.name, engine="openpyxl", nrows=5)
-            return df.to_string(index=False), gr.update(visible=False), gr.update(visible=True)
-        except Exception as e:
-            return f"Error reading XLSX: {e}", gr.update(visible=False), gr.update(visible=True)
+                elif not text:
+                    preview_text += f"{file_names[i]}:\nwas not uploaded due to an error! Please check your document can be OCRed.\n{'-' * 50}\n"
 
-    return "Unsupported file type."
+                # UPLOAD TO DATABASE
+
+                processed_file = af.process_file(file[i], notes=notes, chosen_model=chosen_model)
+
+                # RETURN VALUES TO USER
+
+                first_500_char = text[:500]
+                preview_text += f"{file_names[i]}:\n{first_500_char}\n{'-' * 50}\n"
+
+        return status_message, preview_text, gr.update(visible=False), gr.update(visible=True), content_type, authors, posted_at
+  
+    except Exception as e:
+        return status_message, f"Error processing file: {e}"
 
 
 with gr.Blocks(css="""
@@ -197,7 +167,7 @@ with gr.Blocks(css="""
 
     # Top Bar
     with gr.Row(elem_classes="top-bar"):
-        gr.Markdown("**NOMURA**", elem_classes="logo")
+        gr.Markdown("**CL_Lexcelerate**", elem_classes="logo")
 
         # Profile section in the top-right corner
         gr.HTML("""
@@ -217,7 +187,8 @@ with gr.Blocks(css="""
     # HOME 
     with home_page:
         with gr.Row():
-            with gr.Column(scale=1, min_width=200, elem_classes="sidebar"):  # Sidebar column
+            # Sidebar column
+            with gr.Column(scale=1, min_width=200, elem_classes="sidebar"): 
                 with gr.Column():
                     home_btn = gr.Button("🏠 Home")
                     home_btn.click(navigate_home, outputs=[home_page, classification_page, search_page, savedDocuments_page])
@@ -237,76 +208,55 @@ with gr.Blocks(css="""
 
             with gr.Column(scale=4):
                 gr.Markdown("### Upload your Document(s) here")
-                file_uploader = gr.File(label="Upload your document", type="filepath")
-                chosen_model = gr.Dropdown(label="Choose a model", choices=["gpt3.5-turbo", "deepseek-r1:7b", "llama3.1", "phi4:14b"], value="gpt3.5-turbo", interactive=True)
+                file_uploader = gr.File(label="Upload your document", type="filepath", file_count="multiple")
+                chosen_model = gr.Dropdown(label="Choose a model", choices=["deepseek-r1:7b", "llama3.1", "gpt3.5-turbo"],  value="gpt3.5-turbo", interactive=True)
                 notes = gr.Textbox(placeholder="Write any comments you have about your document(s) here.", label="Comments")       
-                upload_button = gr.Button("Upload Document(s)")
                 output_text = gr.Textbox(label="Upload Status", interactive=False)
-                classify_button = gr.Button("Classify Document(s)")
                 reset_button = gr.Button("Reset") 
+                classify_button = gr.Button("⬇️ Classify Document(s)")             
+                # Classification accordian initially hidden. Error msg for when classification accordian does not show 
+                error_message = gr.Textbox(label="Error", value ="❌ Error: No file uploaded. Please upload a document.", interactive=False, visible=False)  
 
                 # resets all entries upon clicking reset button
                 reset_button.click(
-                    fn=reset_home,
-                    outputs=[file_uploader, notes, output_text, chosen_model]
+                fn=reset_home,
+                outputs=[file_uploader, notes, output_text, chosen_model]
                 )
 
-                # Link button to file upload
-                upload_button.click(
-                    fn=upload_file,
-                    inputs=[file_uploader, notes],
-                    outputs=[output_text]
-                )
+                # Store document preview in state ## take this out if state cant work ##
+                document_preview_output = gr.State()   
 
-                document_preview_output = gr.State()  # Store document preview in state
+                # CLASSIFICATION DROPDOWN SECTION (Initially Hidden)
+                with gr.Accordion("📂 Classification Results", open=True, visible=False) as classification_section:
+                    with gr.Row():          
+                        with gr.Column(scale=3):
+                            gr.Markdown("### Document Preview")
+                            document_preview = gr.Textbox(label="Document Preview", interactive=False)       
 
-                classify_button.click(
-                    fn=upload_to_classify_preview_document,
-                    inputs=[output_text],
-                    outputs=[document_preview_output, home_page, classification_page]
-                )
+                            with gr.Row():
+                                # retract classification
+                                reset_classification = gr.Button("🔄 Reset")             
 
-    # CLASSIFICATION 
-    ## Need to toggle between diff document previews and classification results for diff documents ##
-    with classification_page:
-        document_preview_output = gr.State()  # Store document preview in state
-        with gr.Row():
-            with gr.Column(scale=1, min_width=200, elem_classes="sidebar"):  
-                with gr.Column():
-                    home_btn = gr.Button("🏠 Home")
-                    home_btn.click(navigate_home, outputs=[home_page, classification_page, search_page, savedDocuments_page])
-                    search_btn = gr.Button("🔍 Search")
-                    search_btn.click(navigate_search, outputs=[home_page, classification_page, search_page, savedDocuments_page])
-                    savedDocs_btn = gr.Button("📑 Saved Documents")
-                    savedDocs_btn.click(navigate_savedDocuments, outputs=[home_page, classification_page, search_page, savedDocuments_page])
-                    settings_btn = gr.Button("⚙️ Settings")
-                
-                # Spacer div to push log out button to the bottom
-                with gr.Row(elem_classes="flex-grow"):  
-                    pass  
+                        with gr.Column(scale=1):
+                            gr.Markdown("### Classification Results")
+                            classification_contentType_content = gr.TextArea(label="Content type", interactive=False)
+                            classification_contentType_authors = gr.TextArea(label="Author(s)", interactive=False)
+                            classification_contentType_timing = gr.TextArea(label="Posted at", interactive=False)
 
-                # Log out button at the bottom of the sidebar
-                with gr.Row():
-                    gr.Button("Log out")
-            
-            with gr.Column(scale=3):
-                gr.Markdown("### Document Preview")
-                document_preview = gr.Textbox(label="Document Preview", interactive=False)       
+                        # Reset Button (Hides Classification)
+                        reset_classification.click(
+                            lambda: ("", gr.update(visible=False), gr.update(visible=False)), 
+                            outputs=[document_preview, classification_section, error_message]
+                        )
 
-                with gr.Row():
-                    backtoHome_button = gr.Button("New classification", elem_classes="backtoHome-button") # reset all fields from prev page automatically
-                    reclassify_button = gr.Button("Reclassify", elem_classes="reclassify-button")                
+                        # classify button (opens classification accodian/error msg)
+                        classify_button.click(
+                            fn=upload_to_classify_preview_document,
+                            inputs=[file_uploader, notes, chosen_model],
+                            outputs=[output_text, document_preview, error_message, classification_section, classification_contentType_content, classification_contentType_authors, classification_contentType_timing]
+                        )
 
-            with gr.Column(scale=1):
-                gr.Markdown("### Classification Results")
-                classification_contentType = gr.TextArea(label="Content type", interactive=False)
-                classification_contentType = gr.TextArea(label="Author(s)", interactive=False)
-                classification_contentType = gr.TextArea(label="Posted at", interactive=False)
-
-            # Button to return to home page
-            backtoHome_button.click(navigate_home, outputs=[home_page, classification_page])
         
-
     # SEARCH 
     with search_page:
         with gr.Row():
@@ -332,10 +282,12 @@ with gr.Blocks(css="""
                 # Single row containing the search bar and filters
                 with gr.Row():
                     search_input = gr.Textbox(label="Search query", placeholder="Enter your search query", elem_classes="search-box", scale=3)
-                    filters_contentType = gr.Dropdown(label="Content Type(s)", choices=choices, 
+                    filters_contentType = gr.Dropdown(label="Content Type(s)", choices=["Option 1", "Option 2", "Option 3"], 
                                                     multiselect=True, elem_classes="filter-box", scale=1)
-                    filters_authors = gr.Textbox(label="Author(s)", scale=1, placeholder="Separate names by commas")
-                    filters_postedAt = gr.Textbox(label="Posted at", scale=1)
+                    filters_authors = gr.Dropdown(label="Author(s)", choices=["Option 1", "Option 2", "Option 3"], 
+                                                multiselect=True, elem_classes="filter-box", scale=1)
+                    filters_postedAt = gr.Dropdown(label="Posted at", choices=["Option 1", "Option 2", "Option 3"], 
+                                                multiselect=True, elem_classes="filter-box", scale=1)
                     search_button = gr.Button("Search", elem_classes="search-button-container", scale=1)
 
                 search_documents_output = gr.TextArea(label="Search Results", interactive=False)
@@ -346,9 +298,8 @@ with gr.Blocks(css="""
 
             # Trigger search with all filters as inputs
             search_button.click(perform_search, 
-                inputs=[search_input, filters_contentType, filters_authors, filters_postedAt], 
-                outputs=search_documents_output
-            )
+                                inputs=[search_input, filters_contentType, filters_authors, filters_postedAt], 
+                                outputs=search_documents_output)
 
 
     # SAVED DOCUMENTS
@@ -378,7 +329,6 @@ with gr.Blocks(css="""
 
    # Link buttons to navigation functions
     home_btn.click(navigate_home, outputs=[home_page, classification_page, search_page, savedDocuments_page])
-    classify_button.click(navigate_classification, outputs=[home_page, classification_page, search_page, savedDocuments_page])
     search_btn.click(navigate_search, outputs=[home_page, classification_page, search_page, savedDocuments_page])
     savedDocs_btn.click(navigate_savedDocuments, outputs=[home_page, classification_page, search_page, savedDocuments_page])
 
