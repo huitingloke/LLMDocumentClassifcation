@@ -3,6 +3,7 @@ import os
 import assistive_functions as af
 import langchain_implementation as li
 import database_implementation as dbi
+import sys
 
 # THE TERM "CONTENT_TYPE" IS REPRESENTATIVE OF CLASSIFICATION TYPE!
 
@@ -25,6 +26,15 @@ def navigate_savedDocuments():
     """Returns to the search page by toggling visibility."""
     return gr.update(visible=False), gr.update(visible=False), gr.update(visible=False), gr.update(visible=True)
 
+def process_content(metadata:dict) -> str:
+
+    #THIS IS PER ITEM IN THE LIST
+    content_type = metadata["level2"]
+    author = "TESTING"
+    posted_at = metadata["date"]
+    
+    return content_type, author, posted_at
+
 def upload_to_classify_preview_document(file, notes, chosen_model):
     """
     Handles file upload status and extracts a preview for supported file types (PDF, DOCX, CSV, XLSX).
@@ -41,9 +51,11 @@ def upload_to_classify_preview_document(file, notes, chosen_model):
         status_message += f"✅ File '{file_name}' has been uploaded successfully!\n\n"
     status_message = status_message + f"📌 Comments: {notes if notes else 'No additional notes'}"
 
-
     try:
         preview_text =""
+        authors_text =""
+        content_type_text =""
+        posted_at_text =""
         for i in range(len(file_names)):          
             with open(file[i].name, "rb") as f:
                 
@@ -56,17 +68,23 @@ def upload_to_classify_preview_document(file, notes, chosen_model):
 
                 # UPLOAD TO DATABASE
 
-                processed_file = af.process_file(file[i], notes=notes, chosen_model=chosen_model)
+                metadata, uploaded_id = af.process_file(file[i], notes=notes, chosen_model=chosen_model)
+
+                content_type, authors, posted_at = process_content(metadata)
+
+                content_type_text += f"{content_type}\n{'-' * 50}\n"
+                authors_text += f"{authors}\n{'-' * 50}\n"
+                posted_at_text += f"{posted_at}\n{'-' * 50}\n"
 
                 # RETURN VALUES TO USER
 
                 first_500_char = text[:500]
                 preview_text += f"{file_names[i]}:\n{first_500_char}\n{'-' * 50}\n"
 
-        return status_message, preview_text, gr.update(visible=False), gr.update(visible=True), content_type, authors, posted_at
+        return status_message, preview_text, gr.update(visible=False), gr.update(visible=True), authors_text, content_type_text, posted_at_text
   
     except Exception as e:
-        return status_message, f"Error processing file: {e}"
+        return status_message, f"Error processing file: {e}", gr.update(visible=False), gr.update(visible=True), "-", "-", "-"
 
 
 with gr.Blocks(css="""

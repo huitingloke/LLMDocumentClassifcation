@@ -93,22 +93,7 @@ def search_by_tag_and_query(search_input, filters_contentType, filters_authors, 
         include=["documents", "metadatas"],
     )
     return results
-
-"""def retrieve_search(query, num_results):
-
-    print(f"Retrieving search results...: QUERY: {query}; NUM_RESULTS: {num_results}")
-    results = ""
-    num_results = int(num_results)
-    collection_retrieval = collection.query(
-        query_texts=[query],
-        n_results=num_results,
-    )
-
-    if collection_retrieval:
-        for item in collection_retrieval:
-            print(item)
-    return collection_retrieval if collection_retrieval else "No results found.""" 
-
+ 
 def process_file(file_uploader, notes="", chosen_model="gpt3.5-turbo"):
 
     start_time = time.time()
@@ -120,7 +105,7 @@ def process_file(file_uploader, notes="", chosen_model="gpt3.5-turbo"):
         metadata["source"] = ""
         metadata["comments"] = notes or "NA"
 
-        classified = langchain_implementation.generate_response(document_text=text)
+        classified = langchain_implementation.generate_response(document_text=text, chosen_model=chosen_model)
         print(classified)
         metadata["level1"] = classified["level_1_category"]
         metadata["level2"] = classified["level_2_category"]
@@ -141,7 +126,7 @@ def process_file(file_uploader, notes="", chosen_model="gpt3.5-turbo"):
         execution_time = end_time - start_time
         print(f"Execution time: {execution_time} seconds")
         
-        return f"File '{file_uploader}' uploaded successfully with these comments: {notes}"
+        return metadata, uploaded_id
     
     return "No file uploaded."
 
