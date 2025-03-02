@@ -17,7 +17,7 @@ conn.execute('''CREATE TABLE IF NOT EXISTS files (
         );''')
 conn.commit()
 
-length_of_text = 6000
+length_of_text = 4000
 # Category Tag choices
 choices = [
     "Regulation",
@@ -50,7 +50,7 @@ def extract_text(file):
             with open(file, "rb") as f:
                 reader = PdfReader(f)
                 text = reader.pages[0].extract_text() if reader.pages else "Empty PDF"
-            return text[:500]
+            return text[:length_of_text]
         except Exception as e:
             return f"Error reading PDF: {e}"
 
@@ -60,7 +60,7 @@ def extract_text(file):
         text = ""
         for para in document.paragraphs:
             text += para.text
-        return text[:500]
+        return text[:length_of_text]
 
     # CSV Preview
     elif file.endswith(".csv"):
@@ -101,12 +101,18 @@ def process_file(file_uploader, notes="", chosen_model="gpt3.5-turbo"):
         metadata = {}
         text = extract_text(file_uploader)
 
+        if not text:
+            return "Unsupported file type."
+        
+        if len(text) > length_of_text:
+            text = text[:length_of_text]
+
         metadata["date"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         metadata["source"] = ""
         metadata["comments"] = notes or "NA"
 
-        classified = langchain_implementation.generate_response(document_text=text, chosen_model=chosen_model)
-        print(classified)
+        classified = langchain_implementation.generate_response_with_langchain(document_text=text, chosen_model=chosen_model)
+        
         metadata["level1"] = classified["level_1_category"]
         metadata["level2"] = classified["level_2_category"]
         metadata["model"] = chosen_model

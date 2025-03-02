@@ -81,7 +81,7 @@ def upload_to_classify_preview_document(file, notes, chosen_model):
                 first_500_char = text[:500]
                 preview_text += f"{file_names[i]}:\n{first_500_char}\n{'-' * 50}\n"
 
-        return status_message, preview_text, gr.update(visible=False), gr.update(visible=True), authors_text, content_type_text, posted_at_text
+        return status_message, preview_text, gr.update(visible=False), gr.update(visible=True), content_type_text, authors_text, posted_at_text
   
     except Exception as e:
         return status_message, f"Error processing file: {e}", gr.update(visible=False), gr.update(visible=True), "-", "-", "-"

@@ -45,29 +45,37 @@ def generate_response_with_langchain(document_text: str, chosen_model="gpt3.5-tu
     if chosen_model == "gpt3.5-turbo":
         if OPENAI_API_KEY:
             llm = OpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
-            chain = LLMChain(prompt=PromptTemplate(input_variables=["document_text"], template=prompt_template), llm=llm)
         
         else:
             return "Error: OPENAI_API_KEY environment variable not set."
-        response = chain.run(document_text=document_text)
 
-        try:
-            # Attempt to find the start and end of the JSON object
-            start = response.find('{')
-            end = response.rfind('}') + 1
-            if start != -1 and end > start:
-                json_response = response[start:end]
-                return json.loads(json_response)
-            else:
-                print(f"Error: Could not find valid JSON in response: {response}")
-                return {"error": "Invalid response format - JSON not found"}
-        except json.JSONDecodeError as e:
-            print(f"Error parsing JSON: {e}, Response: {response}")
-            return {"error": "Invalid JSON format"}
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}, Response: {response}")
-            return {"error": "An unexpected error occurred"}
+    elif chosen_model == "llama-8b":
 
-# Step 4: Update your existing `generate_response` function
-def generate_response(document_text, chosen_model="gpt3.5-turbo"):
-    return generate_response_with_langchain(document_text, chosen_model=chosen_model)
+        llm =  "" #fill
+        return
+
+    elif chosen_model == "deepseek-r1:7b": 
+
+        llm =  "" #fill
+        return
+        
+    chain = LLMChain(prompt=PromptTemplate(input_variables=["document_text"], template=prompt_template), llm=llm)
+    response = chain.run(document_text=document_text)
+
+    try:
+        # Attempt to find the start and end of the JSON object
+        start = response.find('{')
+        end = response.rfind('}') + 1
+        if start != -1 and end > start:
+            json_response = response[start:end]
+            return json.loads(json_response)
+        else:
+            print(f"Error: Could not find valid JSON in response: {response}")
+            return {"error": "Invalid response format - JSON not found"}
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON: {e}, Response: {response}")
+        return {"error": "Invalid JSON format"}
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}, Response: {response}")
+        return {"error": "An unexpected error occurred"}
+        
