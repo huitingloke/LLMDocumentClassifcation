@@ -30,12 +30,12 @@ def process_content(metadata:dict) -> str:
 
     #THIS IS PER ITEM IN THE LIST
     content_type = metadata["level2"]
-    author = "TESTING"
+    author = metadata["author"]
     posted_at = metadata["date"]
     
     return content_type, author, posted_at
 
-def upload_to_classify_preview_document(file, notes, chosen_model):
+def upload_to_classify_preview_document(file, notes, chosen_model, uploader = "NA"):
     """
     Handles file upload status and extracts a preview for supported file types (PDF, DOCX, CSV, XLSX).
     Returns an upload status message and the file preview.
@@ -68,12 +68,12 @@ def upload_to_classify_preview_document(file, notes, chosen_model):
 
                 # UPLOAD TO DATABASE
 
-                metadata, uploaded_id = af.process_file(file[i], notes=notes, chosen_model=chosen_model)
+                metadata, uploaded_id = af.process_file(file[i], notes=notes, chosen_model=chosen_model, uploader=uploader)
 
+                authors_text += f"{uploader}\n{'-' * 50}\n"
                 content_type, authors, posted_at = process_content(metadata)
 
                 content_type_text += f"{content_type}\n{'-' * 50}\n"
-                authors_text += f"{authors}\n{'-' * 50}\n"
                 posted_at_text += f"{posted_at}\n{'-' * 50}\n"
 
                 # RETURN VALUES TO USER
@@ -227,7 +227,8 @@ with gr.Blocks(css="""
             with gr.Column(scale=4):
                 gr.Markdown("### Upload your Document(s) here")
                 file_uploader = gr.File(label="Upload your document", type="filepath", file_count="multiple")
-                chosen_model = gr.Dropdown(label="Choose a model", choices=["deepseek-r1:7b", "llama3.1", "gpt3.5-turbo"],  value="gpt3.5-turbo", interactive=True)
+                chosen_model = gr.Dropdown(label="Choose a model", choices=["deepseek-r1:7b", "llama3.1:8b", "gpt3.5-turbo"],  value="gpt3.5-turbo", interactive=True)
+                uploading_author = gr.Textbox(label="Author", placeholder="Enter your name here", interactive=True)
                 notes = gr.Textbox(placeholder="Write any comments you have about your document(s) here.", label="Comments")       
                 output_text = gr.Textbox(label="Upload Status", interactive=False)
                 reset_button = gr.Button("Reset") 
@@ -270,7 +271,7 @@ with gr.Blocks(css="""
                         # classify button (opens classification accodian/error msg)
                         classify_button.click(
                             fn=upload_to_classify_preview_document,
-                            inputs=[file_uploader, notes, chosen_model],
+                            inputs=[file_uploader, notes, chosen_model, uploading_author],
                             outputs=[output_text, document_preview, error_message, classification_section, classification_contentType_content, classification_contentType_authors, classification_contentType_timing]
                         )
 

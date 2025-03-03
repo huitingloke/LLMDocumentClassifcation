@@ -94,7 +94,7 @@ def search_by_tag_and_query(search_input, filters_contentType, filters_authors, 
     )
     return results
  
-def process_file(file_uploader, notes="", chosen_model="gpt3.5-turbo"):
+def process_file(file_uploader, notes="", chosen_model="gpt3.5-turbo", uploader="NA"):
 
     start_time = time.time()
     if file_uploader is not None:
@@ -110,6 +110,7 @@ def process_file(file_uploader, notes="", chosen_model="gpt3.5-turbo"):
         metadata["date"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         metadata["source"] = ""
         metadata["comments"] = notes or "NA"
+        metadata["author"] = uploader
 
         classified = langchain_implementation.generate_response_with_langchain(document_text=text, chosen_model=chosen_model)
         
