@@ -1,9 +1,6 @@
 import gradio as gr
 import os
 import assistive_functions as af
-import langchain_implementation as li
-import database_implementation as dbi
-import sys
 
 # THE TERM "CONTENT_TYPE" IS REPRESENTATIVE OF CLASSIFICATION TYPE!
 
@@ -70,7 +67,7 @@ def upload_to_classify_preview_document(file, notes, chosen_model, uploader = "N
 
                 metadata, uploaded_id = af.process_file(file[i], notes=notes, chosen_model=chosen_model, uploader=uploader)
 
-                authors_text += f"{uploader}\n{'-' * 50}\n"
+                authors_text += f"{uploader if uploader else 'Unknown'}\n{'-' * 50}\n"
                 content_type, authors, posted_at = process_content(metadata)
 
                 content_type_text += f"{content_type}\n{'-' * 50}\n"
